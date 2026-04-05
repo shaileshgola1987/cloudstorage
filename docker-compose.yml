@@ -1,0 +1,106 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────
+# NimbusDrive – docker-compose
+#
+# Services:
+#   mongo    – MongoDB 7 database
+#   backend  – Node.js / Express API  (port 5000, internal only)
+#   frontend – React app served by Nginx (port 3000 → 80)
+#
+# Usage:
+#   1. cp .env.example .env  and fill in your values
+#   2. docker compose up --build
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MongoDB ────────────────────────────────────────────────
+  mongo:
+    image: mongo:7-jammy
+    container_name: mart4trade_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE:      ${MONGO_DB:-nimbuscloud}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - nimbuscloud_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── Backend ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nimbuscloud_backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV:       production
+      PORT:           5000
+      # MongoDB URI uses the service name "mongo" as the host
+      MONGO_URI:      mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-changeme}@mongo:27017/${MONGO_DB:-nimbuscloud}?authSource=admin
+      JWT_SECRET:     ${JWT_SECRET:-change_this_secret_in_production}
+      JWT_EXPIRE:     ${JWT_EXPIRE:-7d}
+      BASE_URL:       ${BASE_URL:-http://localhost:3000}
+      CLIENT_URL:     ${CLIENT_URL:-http://localhost:3000}
+      # FTP settings
+      FTP_HOST:       ${FTP_HOST}
+      FTP_PORT:       ${FTP_PORT:-21}
+      FTP_USER:       ${FTP_USER}
+      FTP_PASSWORD:   ${FTP_PASSWORD}
+      FTP_SECURE:     ${FTP_SECURE:-false}
+      FTP_ROOT:       ${FTP_ROOT:-/uploads}
+      FTP_PUBLIC_URL: ${FTP_PUBLIC_URL:-}
+      FTP_DEBUG:      ${FTP_DEBUG:-false}
+    networks:
+      - martcloud_net
+    # Backend is NOT exposed to the host — Nginx proxies to it internally
+    # Uncomment the line below only if you need direct API access for debugging:
+    # ports:
+    #   - "5000:5000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Frontend ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the React build at compile time.
+        # /api is a relative path — Nginx proxies it to the backend.
+        REACT_APP_API_URL: /api
+    container_name: martcloud_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - martcloud_net
+
+# ── Volumes ────────────────────────────────────────────────────
+volumes:
+  mongo_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────
+networks:
+  martcloud_net:
+    driver: bridge
