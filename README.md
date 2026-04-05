@@ -1,4 +1,4 @@
-# ☁ NimbusDrive — Google Drive Clone
+# ☁ CloudDrive — Google Drive Clone
 
 A full-stack cloud storage app built with **Node.js + Express** (backend) and **React** (frontend).  
 Users can sign up, upload files, organise into folders, star, trash, preview, and share files via public URLs.
@@ -25,7 +25,7 @@ Users can sign up, upload files, organise into folders, star, trash, preview, an
 ## 🗂 Project Structure
 
 ```
-nimbuscloud/
+cloudstorages/
 ├── backend/
 │   ├── config/
 │   │   └── db.js               # MongoDB connection

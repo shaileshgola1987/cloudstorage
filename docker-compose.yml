@@ -40,7 +40,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: nimbuscloud_backend
+    container_name: cloud_backend
     restart: unless-stopped
     depends_on:
       mongo:
@@ -52,8 +52,8 @@ services:
       MONGO_URI:      mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-changeme}@mongo:27017/${MONGO_DB:-nimbuscloud}?authSource=admin
       JWT_SECRET:     ${JWT_SECRET:-change_this_secret_in_production}
       JWT_EXPIRE:     ${JWT_EXPIRE:-7d}
-      BASE_URL:       ${BASE_URL:-http://localhost:3000}
-      CLIENT_URL:     ${CLIENT_URL:-http://localhost:3000}
+      BASE_URL:       ${BASE_URL:-http://localhost:3300}
+      CLIENT_URL:     ${CLIENT_URL:-http://localhost:3300}
       # FTP settings
       FTP_HOST:       ${FTP_HOST}
       FTP_PORT:       ${FTP_PORT:-21}
@@ -70,7 +70,7 @@ services:
     # ports:
     #   - "5000:5000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:5500/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,13 +85,13 @@ services:
         # Baked into the React build at compile time.
         # /api is a relative path — Nginx proxies it to the backend.
         REACT_APP_API_URL: /api
-    container_name: martcloud_frontend
+    container_name: cloud_frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3300}:80"
     networks:
       - martcloud_net
 
